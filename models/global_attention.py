@@ -19,15 +19,12 @@ class GlobalAttention(nn.Module):
         self.k = nn.Linear(dim, dim, bias=True)
         self.v = nn.Linear(dim, dim, bias=True)
 
-        self.norm = nn.LayerNorm(dim)
-
         self.reset_parameters()
 
     def reset_parameters(self):
         self.q.reset_parameters()
         self.k.reset_parameters()
         self.v.reset_parameters()
-        self.norm.reset_parameters()
 
     def reshape_heads(self, x):
         n = x.size(0)
@@ -79,6 +76,5 @@ class GlobalAttention(nn.Module):
             denominator + 1e-8
         )  # Compute attention output ([N, dim_h, n_heads])
         out = self.merge_heads(out)  # Merge heads back to original dimension ([N, dim])
-        out = self.norm(out)  # Apply layer normalization
 
         return out
