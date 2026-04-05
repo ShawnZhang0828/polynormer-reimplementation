@@ -107,7 +107,7 @@ def determine_output_and_label(outputs, y, split_idx):
     return outputs[split_idx], y[split_idx]
 
 
-def train_one_epoch(model, data, optimizer, device):
+def train_one_epoch(model, data, train_idx, optimizer, device):
     model.train()
     optimizer.zero_grad()
 
@@ -117,7 +117,7 @@ def train_one_epoch(model, data, optimizer, device):
 
     out = model(x, edge_index)
     # Determine output and label from the training split
-    train_out, train_y = determine_output_and_label(out, y, data.train_mask)
+    train_out, train_y = determine_output_and_label(out, y, train_idx)
     loss = F.cross_entropy(train_out, train_y)
     loss.backward()
 
@@ -165,8 +165,14 @@ def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # TEMP: Load dataset (Cora) and get input/output dimensions
-    data, in_dim, out_dim = load_dataset(configuration["dataset"], root="data")
+    # Load dataset and get train/val/test indices
+    data, in_dim, out_dim = load_dataset(
+        configuration["dataset"], root="data", seed=configuration["seed"]
+    )
+    train_idx, val_idx, test_idx = get_split_idx(data)
+    train_idx = train_idx.to(device) if torch.is_tensor(train_idx) else None
+    val_idx = val_idx.to(device) if torch.is_tensor(val_idx) else None
+    test_idx = test_idx.to(device) if torch.is_tensor(test_idx) else None
 
     # Initialize model and optimizer
     model = Polynormer(
@@ -192,7 +198,9 @@ def main():
 
     # Training loop
     for epoch in range(1, configuration["epochs"] + 1):
-        train_loss, train_acc = train_one_epoch(model, data, optimizer, device)
+        train_loss, train_acc = train_one_epoch(
+            model, data, train_idx, optimizer, device
+        )
         metrics = evaluate(model, data, device)
 
         if metrics["val_acc"] > best_val_acc:

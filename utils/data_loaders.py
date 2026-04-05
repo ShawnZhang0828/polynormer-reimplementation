@@ -1,3 +1,4 @@
+import torch
 from torch_geometric.datasets import (
     Planetoid,
     Amazon,
@@ -15,30 +16,34 @@ def load_planetoid_dataset(root, name):
     return data, dataset.num_node_features, dataset.num_classes
 
 
-def load_computer_dataset(root):
+def load_computer_dataset(root, seed=42):
     dataset = Amazon(root=f"{root}/Amazon", name="Computers")
     data = dataset[0]
+    data = create_random_split(data, seed=seed)
 
     return data, dataset.num_node_features, dataset.num_classes
 
 
-def load_photo_dataset(root):
+def load_photo_dataset(root, seed=42):
     dataset = Amazon(root=f"{root}/Amazon", name="Photo")
     data = dataset[0]
+    data = create_random_split(data, seed=seed)
 
     return data, dataset.num_node_features, dataset.num_classes
 
 
-def load_cs_dataset(root):
+def load_cs_dataset(root, seed=42):
     dataset = Coauthor(root=f"{root}/Coauthor", name="CS")
     data = dataset[0]
+    data = create_random_split(data, seed=seed)
 
     return data, dataset.num_node_features, dataset.num_classes
 
 
-def load_physics_dataset(root):
+def load_physics_dataset(root, seed=42):
     dataset = Coauthor(root=f"{root}/Coauthor", name="Physics")
     data = dataset[0]
+    data = create_random_split(data, seed=seed)
 
     return data, dataset.num_node_features, dataset.num_classes
 
@@ -112,19 +117,19 @@ def load_ogbn_products_data(root):
     return data, dataset.num_node_features, dataset.num_classes
 
 
-def load_dataset(name, root="data", split_idx=0):
+def load_dataset(name, root="data", split_idx=0, seed=42):
     name = name.lower()
 
     if name == "cora":
         return load_planetoid_dataset(root, "Cora")
     elif name == "computer":
-        return load_computer_dataset(root)
+        return load_computer_dataset(root, seed=seed)
     elif name == "photo":
-        return load_photo_dataset(root)
+        return load_photo_dataset(root, seed=seed)
     elif name == "cs":
-        return load_cs_dataset(root)
+        return load_cs_dataset(root, seed=seed)
     elif name == "physics":
-        return load_physics_dataset(root)
+        return load_physics_dataset(root, seed=seed)
     elif name == "wikics":
         return load_wikics_dataset(root, split_idx)
     elif name == "roman-empire":
@@ -143,3 +148,29 @@ def load_dataset(name, root="data", split_idx=0):
         return load_ogbn_products_data(root)
 
     raise ValueError(f"ARGUMENT ERROR: Unsupported dataset name: {name}")
+
+
+def create_random_split(data, train_ratio=0.6, val_ratio=0.2, seed=42):
+    num_nodes = data.num_nodes
+    indices = torch.randperm(num_nodes, generator=torch.Generator().manual_seed(seed))
+
+    train_size = int(train_ratio * num_nodes)
+    val_size = int(val_ratio * num_nodes)
+
+    train_idx = indices[:train_size]
+    val_idx = indices[train_size : train_size + val_size]
+    test_idx = indices[train_size + val_size :]
+
+    train_mask = torch.zeros(num_nodes, dtype=torch.bool)
+    val_mask = torch.zeros(num_nodes, dtype=torch.bool)
+    test_mask = torch.zeros(num_nodes, dtype=torch.bool)
+
+    train_mask[train_idx] = True
+    val_mask[val_idx] = True
+    test_mask[test_idx] = True
+
+    data.train_mask = train_mask
+    data.val_mask = val_mask
+    data.test_mask = test_mask
+
+    return data

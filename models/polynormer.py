@@ -46,10 +46,10 @@ class Polynormer(nn.Module):
         )
 
         self.local_h = nn.ModuleList(
-            [nn.Linear(hidden_dim, hidden_dim) for _ in range(n_global_layers)]
+            [nn.Linear(hidden_dim, hidden_dim) for _ in range(n_local_layers)]
         )
 
-        self.local_betas = nn.Parameter(torch.zeros(n_local_layers))
+        self.local_betas = nn.Parameter(torch.zeros(n_local_layers, hidden_dim))
 
         self.local_norms = nn.ModuleList(
             [nn.LayerNorm(hidden_dim) for _ in range(n_local_layers)]
@@ -131,7 +131,6 @@ class Polynormer(nn.Module):
         x = local_x
 
         # Global modules
-        global_x = torch.zeros_like(x)
         for i, global_layer in enumerate(self.global_layers):
             h = self.global_h[i](x)
             beta = torch.sigmoid(self.global_betas[i])
