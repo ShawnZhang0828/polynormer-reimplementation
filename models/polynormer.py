@@ -6,7 +6,7 @@ from models.global_attention import GlobalAttention
 from models.local_attention import LocalAttention
 
 
-class PolyNormer(nn.Module):
+class Polynormer(nn.Module):
     def __init__(
         self,
         in_dim,
