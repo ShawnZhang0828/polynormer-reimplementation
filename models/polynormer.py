@@ -99,7 +99,7 @@ class Polynormer(nn.Module):
 
         self.prediction_head.reset_parameters()
 
-    def forward(self, x, edge_index):
+    def forward(self, x, edge_index, freeze_global=False):
         if x.size(1) != self.in_dim:
             raise ValueError(
                 f"INPUT ERROR: Expected input dimension {self.in_dim}, got {x.size(1)}"
@@ -130,19 +130,21 @@ class Polynormer(nn.Module):
 
         x = local_x
 
-        # Global modules
-        for i, global_layer in enumerate(self.global_layers):
-            h = self.global_h[i](x)
-            beta = torch.sigmoid(self.global_betas[i])
-            layer_out = global_layer(x)
-            layer_norm = self.global_norms[i](
-                h * layer_out
-            )  # Add layer norm to stabilize training
+        # Active global modules after warm-up epochs
+        if not freeze_global:
+            # Global modules
+            for i, global_layer in enumerate(self.global_layers):
+                h = self.global_h[i](x)
+                beta = torch.sigmoid(self.global_betas[i])
+                layer_out = global_layer(x)
+                layer_norm = self.global_norms[i](
+                    h * layer_out
+                )  # Add layer norm to stabilize training
 
-            x = (1 - beta) * layer_norm + beta * layer_out  # Hadamard product
+                x = (1 - beta) * layer_norm + beta * layer_out  # Hadamard product
 
-            if self.use_relu:
-                x = F.relu(x)
+                if self.use_relu:
+                    x = F.relu(x)
 
         # Final prediction
         out = self.prediction_head(x)

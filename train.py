@@ -61,7 +61,13 @@ def parse_arguments():
         help="Number of heads for global attention",
     )
     parser.add_argument(
-        "--epochs", type=int, default=20, help="Number of training epochs"
+        "--warm_up_epochs", type=int, default=None, help="Number of warm-up epochs"
+    )
+    parser.add_argument(
+        "--local_to_global_epochs",
+        type=int,
+        default=None,
+        help="Epoch to switch from local to global training",
     )
     parser.add_argument(
         "--use_relu",
@@ -116,7 +122,7 @@ def determine_output_and_label(outputs, y, split_idx):
     return outputs[split_idx], y[split_idx]
 
 
-def train_one_epoch(model, data, train_idx, optimizer, device):
+def train_one_epoch(model, data, train_idx, optimizer, device, freeze_global=False):
     model.train()
     optimizer.zero_grad()
 
@@ -124,7 +130,7 @@ def train_one_epoch(model, data, train_idx, optimizer, device):
     edge_index = data.edge_index.to(device)
     y = data.y.to(device)
 
-    out = model(x, edge_index)
+    out = model(x, edge_index, freeze_global=freeze_global)
     # Determine output and label from the training split
     train_out, train_y = determine_output_and_label(out, y, train_idx)
     loss = F.cross_entropy(train_out, train_y)
@@ -137,7 +143,7 @@ def train_one_epoch(model, data, train_idx, optimizer, device):
 
 
 @torch.no_grad()
-def evaluate(model, data, device):
+def evaluate(model, data, device, freeze_global=False):
     model.eval()
 
     x = data.x.to(device)
@@ -146,7 +152,7 @@ def evaluate(model, data, device):
 
     train_idx, val_idx, test_idx = get_split_idx(data)
 
-    out = model(x, edge_index)
+    out = model(x, edge_index, freeze_global=freeze_global)
 
     # Extract output and label for each split
     train_out, train_y = determine_output_and_label(out, y, train_idx)
@@ -206,10 +212,23 @@ def main():
     best_val_acc = -1
     best_test_acc = -1
 
-    # Training loop
-    for epoch in range(1, configuration["epochs"] + 1):
+    for epoch in range(1, configuration["warm_up_epochs"] + 1):
         train_loss, train_acc = train_one_epoch(
-            model, data, train_idx, optimizer, device
+            model, data, train_idx, optimizer, device, freeze_global=True
+        )
+
+    metrics = evaluate(model, data, device, freeze_global=True)
+    print(
+        f"Finish warm-up with {epoch:03d} epochs | ",
+        f"Train loss: {train_loss:.4f}, Train acc: {train_acc:.4f} | ",
+        f"Val acc: {metrics['val_acc']:.4f} | ",
+        f"Test acc: {metrics['test_acc']:.4f}",
+    )
+
+    # Training loop
+    for epoch in range(1, configuration["local_to_global_epochs"] + 1):
+        train_loss, train_acc = train_one_epoch(
+            model, data, train_idx, optimizer, device, freeze_global=False
         )
         metrics = evaluate(model, data, device)
 
