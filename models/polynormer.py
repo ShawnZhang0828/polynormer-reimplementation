@@ -17,7 +17,7 @@ class Polynormer(nn.Module):
         n_local_heads=1,
         n_global_heads=8,
         use_local_attention_network=True,
-        local_dropout=0.0,
+        dropout=0.0,
         use_relu=False,
     ):
         super().__init__()
@@ -39,7 +39,7 @@ class Polynormer(nn.Module):
                     dim=hidden_dim,
                     use_attention_network=use_local_attention_network,
                     n_heads=n_local_heads,
-                    dropout=local_dropout,
+                    dropout=dropout,
                 )
                 for _ in range(n_local_layers)
             ]

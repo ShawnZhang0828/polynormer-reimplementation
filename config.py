@@ -6,6 +6,7 @@ def get_default_config():
         "n_global_layers": 2,
         "n_local_heads": 1,
         "n_global_heads": 8,
+        "dropout": 0.0,
         "lr": 1e-3,
         "weight_decay": 5e-4,
         "epochs": 20,

@@ -34,27 +34,30 @@ def parse_arguments():
         help="Name of the dataset to use (e.g., Cora, Citeseer)",
     )
     parser.add_argument(
-        "--hidden_dim", type=int, default=64, help="Hidden dimension size"
+        "--hidden_dim", type=int, default=None, help="Hidden dimension size"
     )
     parser.add_argument(
-        "--n_local_layers", type=int, default=2, help="Numberof local attention layers"
+        "--n_local_layers",
+        type=int,
+        default=None,
+        help="Numberof local attention layers",
     )
     parser.add_argument(
         "--n_global_layers",
         type=int,
-        default=2,
+        default=None,
         help="Number of global attention layers",
     )
     parser.add_argument(
         "--n_local_heads",
         type=int,
-        default=1,
+        default=None,
         help="Number of heads for local attention",
     )
     parser.add_argument(
         "--n_global_heads",
         type=int,
-        default=8,
+        default=None,
         help="Number of heads for global attention",
     )
     parser.add_argument(
@@ -63,14 +66,20 @@ def parse_arguments():
     parser.add_argument(
         "--use_relu",
         type=strToBool,
-        default=False,
+        default=None,
         help="Whether to use ReLU activation",
     )
     parser.add_argument(
         "--use_local_attention_network",
         type=strToBool,
-        default=True,
+        default=None,
         help="Whether to use attention network in local layers",
+    )
+    parser.add_argument(
+        "--lr", type=float, default=None, help="Learning rate for the optimizer"
+    )
+    parser.add_argument(
+        "--dropout", type=float, default=None, help="Dropout rate for attention layers"
     )
 
     return parser.parse_args()
@@ -183,6 +192,7 @@ def main():
         n_global_layers=configuration["n_global_layers"],
         n_local_heads=configuration["n_local_heads"],
         n_global_heads=configuration["n_global_heads"],
+        dropout=configuration["dropout"],
         use_relu=configuration["use_relu"],
         use_local_attention_network=configuration["use_local_attention_network"],
     ).to(device)
