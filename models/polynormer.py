@@ -14,7 +14,8 @@ class Polynormer(nn.Module):
         out_dim,
         n_local_layers,
         n_global_layers,
-        n_heads=8,
+        n_local_heads=1,
+        n_global_heads=8,
         use_local_attention_network=True,
         local_dropout=0.0,
         use_relu=False,
@@ -26,7 +27,8 @@ class Polynormer(nn.Module):
         self.out_dim = out_dim
         self.n_local_layers = n_local_layers
         self.n_global_layers = n_global_layers
-        self.n_heads = n_heads
+        self.n_local_heads = n_local_heads
+        self.n_global_heads = n_global_heads
         self.use_relu = use_relu
 
         self.input_projection = nn.Linear(in_dim, hidden_dim)
@@ -36,7 +38,7 @@ class Polynormer(nn.Module):
                 LocalAttention(
                     dim=hidden_dim,
                     use_attention_network=use_local_attention_network,
-                    n_heads=n_heads,
+                    n_heads=n_local_heads,
                     dropout=local_dropout,
                 )
                 for _ in range(n_local_layers)
@@ -55,7 +57,7 @@ class Polynormer(nn.Module):
 
         self.global_layers = nn.ModuleList(
             [
-                GlobalAttention(dim=hidden_dim, n_heads=n_heads)
+                GlobalAttention(dim=hidden_dim, n_heads=n_global_heads)
                 for _ in range(n_global_layers)
             ]
         )

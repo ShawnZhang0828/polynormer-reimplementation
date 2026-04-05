@@ -1,14 +1,89 @@
+import argparse
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import Adam
 
 from models.polynormer import Polynormer
-from utils.io import save_checkpoint, load_checkpoint
+from utils.io import save_checkpoint
 from utils.metrics import compute_metrics
 from utils.seed import set_seed
-from utils.data_loaders import load_planetoid_dataset
+from utils.data_loaders import load_dataset
 from config import get_default_config
+
+
+def strToBool(value):
+    # Helper function to parse boolean command-line arguments
+    if isinstance(value, bool):
+        return value
+    value = value.lower()
+    if value in ("true", "t"):
+        return True
+    elif value in ("false", "f"):
+        return False
+    else:
+        raise argparse.ArgumentTypeError("Boolean value expected.")
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="Cora",
+        help="Name of the dataset to use (e.g., Cora, Citeseer)",
+    )
+    parser.add_argument(
+        "--hidden_dim", type=int, default=64, help="Hidden dimension size"
+    )
+    parser.add_argument(
+        "--n_local_layers", type=int, default=2, help="Numberof local attention layers"
+    )
+    parser.add_argument(
+        "--n_global_layers",
+        type=int,
+        default=2,
+        help="Number of global attention layers",
+    )
+    parser.add_argument(
+        "--n_local_heads",
+        type=int,
+        default=1,
+        help="Number of heads for local attention",
+    )
+    parser.add_argument(
+        "--n_global_heads",
+        type=int,
+        default=8,
+        help="Number of heads for global attention",
+    )
+    parser.add_argument(
+        "--epochs", type=int, default=20, help="Number of training epochs"
+    )
+    parser.add_argument(
+        "--use_relu",
+        type=strToBool,
+        default=False,
+        help="Whether to use ReLU activation",
+    )
+    parser.add_argument(
+        "--use_local_attention_network",
+        type=strToBool,
+        default=True,
+        help="Whether to use attention network in local layers",
+    )
+
+    return parser.parse_args()
+
+
+def merge_args_with_config(args, config):
+    args = vars(args)
+
+    for key, value in args.items():
+        if value is not None:
+            config[key] = value
+
+    return config
 
 
 def get_split_idx(data):
@@ -80,8 +155,10 @@ def evaluate(model, data, device):
 
 
 def main():
-    # Get default configuration
+    # Get default configuration and merge with command-line arguments
     configuration = get_default_config()
+    args = parse_arguments()
+    configuration = merge_args_with_config(args, configuration)
 
     # Set random seed for reproducibility
     set_seed(configuration["seed"])
@@ -89,7 +166,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # TEMP: Load dataset (Cora) and get input/output dimensions
-    data, in_dim, out_dim = load_planetoid_dataset("data", "Cora")
+    data, in_dim, out_dim = load_dataset(configuration["dataset"], root="data")
 
     # Initialize model and optimizer
     model = Polynormer(
@@ -98,7 +175,8 @@ def main():
         out_dim=out_dim,
         n_local_layers=configuration["n_local_layers"],
         n_global_layers=configuration["n_global_layers"],
-        n_heads=configuration["n_heads"],
+        n_local_heads=configuration["n_local_heads"],
+        n_global_heads=configuration["n_global_heads"],
         use_relu=configuration["use_relu"],
         use_local_attention_network=configuration["use_local_attention_network"],
     ).to(device)

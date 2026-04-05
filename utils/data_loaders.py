@@ -110,3 +110,36 @@ def load_ogbn_products_data(root):
     data.split_idx = dataset.get_idx_split()
 
     return data, dataset.num_node_features, dataset.num_classes
+
+
+def load_dataset(name, root="data", split_idx=0):
+    name = name.lower()
+
+    if name == "cora":
+        return load_planetoid_dataset(root, "Cora")
+    elif name == "computer":
+        return load_computer_dataset(root)
+    elif name == "photo":
+        return load_photo_dataset(root)
+    elif name == "cs":
+        return load_cs_dataset(root)
+    elif name == "physics":
+        return load_physics_dataset(root)
+    elif name == "wikics":
+        return load_wikics_dataset(root, split_idx)
+    elif name == "roman-empire":
+        return load_roman_empire_data
+    elif name == "amazon-rating":
+        return load_amazon_rating_data(root)
+    elif name == "minesweeper":
+        return load_minesweeper_data(root)
+    elif name == "tolokers":
+        return load_tolokers_data(root)
+    elif name == "questions":
+        return load_questions_data(root)
+    elif name == "ogbn-arxiv":
+        return load_ogbn_arxiv_data(root)
+    elif name == "ogbn-products":
+        return load_ogbn_products_data(root)
+
+    raise ValueError(f"ARGUMENT ERROR: Unsupported dataset name: {name}")
