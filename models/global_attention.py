@@ -1,9 +1,10 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class GlobalAttention(nn.Module):
-    def __init__(self, dim, n_heads=8):
+    def __init__(self, dim, dropout, n_heads=8):
         super().__init__()
 
         if dim % n_heads != 0:
@@ -14,6 +15,7 @@ class GlobalAttention(nn.Module):
         self.dim = dim
         self.n_heads = n_heads
         self.head_dim = dim // n_heads
+        self.dropout = dropout
 
         self.q = nn.Linear(dim, dim, bias=True)
         self.k = nn.Linear(dim, dim, bias=True)
@@ -76,5 +78,6 @@ class GlobalAttention(nn.Module):
             denominator + 1e-8
         )  # Compute attention output ([N, dim_h, n_heads])
         out = self.merge_heads(out)  # Merge heads back to original dimension ([N, dim])
+        out = F.dropout(out, p=self.dropout, training=self.training)
 
         return out

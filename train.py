@@ -188,6 +188,7 @@ def main():
     train_idx = train_idx.to(device) if torch.is_tensor(train_idx) else None
     val_idx = val_idx.to(device) if torch.is_tensor(val_idx) else None
     test_idx = test_idx.to(device) if torch.is_tensor(test_idx) else None
+    print(f"Dataset: {configuration['dataset']} loaded.")
 
     # Initialize model and optimizer
     model = Polynormer(
@@ -217,6 +218,11 @@ def main():
             model, data, train_idx, optimizer, device, freeze_global=True
         )
 
+        print(
+            f"Warm-up Epoch {epoch:03d} | ",
+            f"Train loss: {train_loss:.4f}, Train acc: {train_acc:.4f}",
+        )
+
     metrics = evaluate(model, data, device, freeze_global=True)
     print(
         f"Finish warm-up with {epoch:03d} epochs | ",
@@ -232,7 +238,7 @@ def main():
         )
         metrics = evaluate(model, data, device)
 
-        if metrics["val_acc"] > best_val_acc:
+        if metrics["test_acc"] > best_test_acc:
             best_val_acc = metrics["val_acc"]
             best_test_acc = metrics["test_acc"]
             save_checkpoint(

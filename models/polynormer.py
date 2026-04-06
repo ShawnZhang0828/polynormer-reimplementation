@@ -57,7 +57,7 @@ class Polynormer(nn.Module):
 
         self.global_layers = nn.ModuleList(
             [
-                GlobalAttention(dim=hidden_dim, n_heads=n_global_heads)
+                GlobalAttention(dim=hidden_dim, dropout=dropout, n_heads=n_global_heads)
                 for _ in range(n_global_layers)
             ]
         )
@@ -117,11 +117,8 @@ class Polynormer(nn.Module):
             h = self.local_h[i](x)
             beta = torch.sigmoid(self.local_betas[i]).unsqueeze(0)
             layer_out = local_layer(x, edge_index)
-            layer_norm = self.local_norms[i](
-                h * layer_out
-            )  # Add layer norm to stabilize training
 
-            x = (1 - beta) * layer_norm + beta * layer_out  # Hadamard product
+            x = (1 - beta) * self.local_norms[i](h * layer_out) + beta * layer_out
 
             if self.use_relu:
                 x = F.relu(x)
@@ -135,13 +132,10 @@ class Polynormer(nn.Module):
             # Global modules
             for i, global_layer in enumerate(self.global_layers):
                 h = self.global_h[i](x)
-                beta = torch.sigmoid(self.global_betas[i])
+                beta = torch.sigmoid(self.global_betas[i]).unsqueeze(0)
                 layer_out = global_layer(x)
-                layer_norm = self.global_norms[i](
-                    h * layer_out
-                )  # Add layer norm to stabilize training
 
-                x = (1 - beta) * layer_norm + beta * layer_out  # Hadamard product
+                x = self.global_norms[i](layer_out) * (h + beta)
 
                 if self.use_relu:
                     x = F.relu(x)
