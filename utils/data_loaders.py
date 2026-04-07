@@ -71,7 +71,7 @@ def load_roman_empire_data(root):
 
 def load_amazon_rating_data(root):
     dataset = HeterophilousGraphDataset(
-        root=f"{root}/Heterophilous", name="Amazon-Photo"
+        root=f"{root}/Heterophilous", name="Amazon-rating"
     )
     data = dataset[0]
 
@@ -133,7 +133,7 @@ def load_dataset(name, root="data", split_idx=0, seed=42):
     elif name == "wikics":
         return load_wikics_dataset(root, split_idx)
     elif name == "roman-empire":
-        return load_roman_empire_data
+        return load_roman_empire_data(root)
     elif name == "amazon-rating":
         return load_amazon_rating_data(root)
     elif name == "minesweeper":

@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from torch.optim import Adam
 
 from models.polynormer import Polynormer
-from utils.io import save_checkpoint
+from utils.io import save_checkpoint, load_checkpoint
 from utils.metrics import compute_metrics
 from utils.seed import set_seed
 from utils.data_loaders import load_dataset
@@ -210,6 +210,8 @@ def main():
         weight_decay=configuration["weight_decay"],
     )
 
+    best_warm_up_val_acc = -1
+    best_warm_up_test_acc = -1
     best_val_acc = -1
     best_test_acc = -1
 
@@ -217,6 +219,18 @@ def main():
         train_loss, train_acc = train_one_epoch(
             model, data, train_idx, optimizer, device, freeze_global=True
         )
+        metrics = evaluate(model, data, device, freeze_global=True)
+
+        if metrics["val_acc"] > best_warm_up_val_acc:
+            best_warm_up_val_acc = metrics["val_acc"]
+            best_warm_up_test_acc = metrics["test_acc"]
+            save_checkpoint(
+                configuration["checkpoint_path"],
+                model,
+                optimizer,
+                epoch,
+                best_warm_up_val_acc,
+            )
 
         print(
             f"Warm-up Epoch {epoch:03d} | ",
@@ -227,8 +241,15 @@ def main():
     print(
         f"Finish warm-up with {epoch:03d} epochs | ",
         f"Train loss: {train_loss:.4f}, Train acc: {train_acc:.4f} | ",
-        f"Val acc: {metrics['val_acc']:.4f} | ",
-        f"Test acc: {metrics['test_acc']:.4f}",
+        f"Best val acc: {best_warm_up_val_acc:.4f} | ",
+        f"Best test acc: {best_warm_up_test_acc:.4f}",
+    )
+
+    print("Loading best warm-up checkpoint...")
+    load_checkpoint(
+        configuration["checkpoint_path"],
+        model,
+        optimizer,
     )
 
     # Training loop
@@ -238,7 +259,7 @@ def main():
         )
         metrics = evaluate(model, data, device)
 
-        if metrics["test_acc"] > best_test_acc:
+        if metrics["val_acc"] > best_val_acc:
             best_val_acc = metrics["val_acc"]
             best_test_acc = metrics["test_acc"]
             save_checkpoint(

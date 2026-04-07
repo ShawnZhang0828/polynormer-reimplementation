@@ -31,8 +31,7 @@ class Polynormer(nn.Module):
         self.n_global_heads = n_global_heads
         self.use_relu = use_relu
 
-        self.input_projection = nn.Linear(in_dim, hidden_dim)
-
+        self.linear_in = nn.Linear(in_dim, hidden_dim)
         self.local_layers = nn.ModuleList(
             [
                 LocalAttention(
@@ -55,6 +54,10 @@ class Polynormer(nn.Module):
             [nn.LayerNorm(hidden_dim) for _ in range(n_local_layers)]
         )
 
+        self.local_linears = nn.ModuleList(
+            [nn.Linear(hidden_dim, hidden_dim) for _ in range(n_local_layers)]
+        )
+
         self.global_layers = nn.ModuleList(
             [
                 GlobalAttention(dim=hidden_dim, dropout=dropout, n_heads=n_global_heads)
@@ -72,12 +75,15 @@ class Polynormer(nn.Module):
             [nn.LayerNorm(hidden_dim) for _ in range(n_global_layers)]
         )
 
+        self.global_linear = nn.Linear(hidden_dim, hidden_dim)
+
         self.prediction_head = nn.Linear(hidden_dim, out_dim)
+        self.prediction_head_local = nn.Linear(hidden_dim, out_dim)
 
         self.reset_parameters()
 
     def reset_parameters(self):
-        self.input_projection.reset_parameters()
+        self.linear_in.reset_parameters()
 
         for local_layer in self.local_layers:
             local_layer.reset_parameters()
@@ -97,6 +103,9 @@ class Polynormer(nn.Module):
         for layer in self.global_norms:
             layer.reset_parameters()
 
+        for layer in self.local_linears:
+            layer.reset_parameters()
+
         self.prediction_head.reset_parameters()
 
     def forward(self, x, edge_index, freeze_global=False):
@@ -109,14 +118,18 @@ class Polynormer(nn.Module):
                 f"INPUT ERROR: edge_index must be of shape [2, num_edges], got {edge_index.shape}"
             )
 
-        x = self.input_projection(x)
+        x = self.linear_in(x)
 
         # Local modules
         local_x = torch.zeros_like(x)
         for i, local_layer in enumerate(self.local_layers):
             h = self.local_h[i](x)
+
+            if self.use_relu:
+                h = F.relu(h)
+
             beta = torch.sigmoid(self.local_betas[i]).unsqueeze(0)
-            layer_out = local_layer(x, edge_index)
+            layer_out = local_layer(x, edge_index) + self.local_linears[i](x)
 
             x = (1 - beta) * self.local_norms[i](h * layer_out) + beta * layer_out
 
@@ -136,11 +149,14 @@ class Polynormer(nn.Module):
                 layer_out = global_layer(x)
 
                 x = self.global_norms[i](layer_out) * (h + beta)
+                x = self.global_linear(x)
 
                 if self.use_relu:
                     x = F.relu(x)
-
-        # Final prediction
-        out = self.prediction_head(x)
+            # Final prediction
+            out = self.prediction_head(x)
+        else:
+            # Final prediction (local)
+            out = self.prediction_head_local(x)
 
         return out
