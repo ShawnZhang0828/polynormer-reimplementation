@@ -75,8 +75,6 @@ class Polynormer(nn.Module):
             [nn.LayerNorm(hidden_dim) for _ in range(n_global_layers)]
         )
 
-        self.global_linear = nn.Linear(hidden_dim, hidden_dim)
-
         self.prediction_head = nn.Linear(hidden_dim, out_dim)
         self.prediction_head_local = nn.Linear(hidden_dim, out_dim)
 
@@ -107,6 +105,7 @@ class Polynormer(nn.Module):
             layer.reset_parameters()
 
         self.prediction_head.reset_parameters()
+        self.prediction_head_local.reset_parameters()
 
     def forward(self, x, edge_index, freeze_global=False):
         if x.size(1) != self.in_dim:
@@ -140,7 +139,7 @@ class Polynormer(nn.Module):
 
         x = local_x
 
-        # Active global modules after warm-up epochs
+        # Activate global modules after warm-up epochs
         if not freeze_global:
             # Global modules
             for i, global_layer in enumerate(self.global_layers):
@@ -149,7 +148,6 @@ class Polynormer(nn.Module):
                 layer_out = global_layer(x)
 
                 x = self.global_norms[i](layer_out) * (h + beta)
-                x = self.global_linear(x)
 
                 if self.use_relu:
                     x = F.relu(x)
