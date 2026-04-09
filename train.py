@@ -31,61 +31,66 @@ def parse_arguments():
         "--dataset",
         type=str,
         default="Cora",
-        help="Name of the dataset to use (e.g., Cora, Citeseer)",
     )
     parser.add_argument(
-        "--hidden_dim", type=int, default=None, help="Hidden dimension size"
+        "--hidden_dim",
+        type=int,
+        default=None,
     )
     parser.add_argument(
         "--n_local_layers",
         type=int,
         default=None,
-        help="Numberof local attention layers",
     )
     parser.add_argument(
         "--n_global_layers",
         type=int,
         default=None,
-        help="Number of global attention layers",
     )
     parser.add_argument(
         "--n_local_heads",
         type=int,
         default=None,
-        help="Number of heads for local attention",
     )
     parser.add_argument(
         "--n_global_heads",
         type=int,
         default=None,
-        help="Number of heads for global attention",
     )
     parser.add_argument(
-        "--warm_up_epochs", type=int, default=None, help="Number of warm-up epochs"
+        "--warm_up_epochs",
+        type=int,
+        default=None,
     )
     parser.add_argument(
         "--local_to_global_epochs",
         type=int,
         default=None,
-        help="Epoch to switch from local to global training",
     )
     parser.add_argument(
         "--use_relu",
         type=strToBool,
         default=None,
-        help="Whether to use ReLU activation",
     )
     parser.add_argument(
         "--use_local_attention_network",
         type=strToBool,
         default=None,
-        help="Whether to use attention network in local layers",
     )
     parser.add_argument(
-        "--lr", type=float, default=None, help="Learning rate for the optimizer"
+        "--lr",
+        type=float,
+        default=None,
     )
     parser.add_argument(
-        "--dropout", type=float, default=None, help="Dropout rate for attention layers"
+        "--dropout",
+        type=float,
+        default=None,
+    )
+    parser.add_argument(
+        "--metric",
+        type=str,
+        default=None,
     )
 
     return parser.parse_args()
@@ -143,7 +148,7 @@ def train_one_epoch(model, data, train_idx, optimizer, device, freeze_global=Fal
 
 
 @torch.no_grad()
-def evaluate(model, data, device, freeze_global=False):
+def evaluate(model, data, device, freeze_global=False, metric="accuracy"):
     model.eval()
 
     x = data.x.to(device)
@@ -161,11 +166,11 @@ def evaluate(model, data, device, freeze_global=False):
 
     return {
         "train_loss": F.cross_entropy(train_out, train_y).item(),
-        "train_acc": compute_metrics(train_out, train_y),
+        "train_acc": compute_metrics(train_out, train_y, metric=metric),
         "val_loss": F.cross_entropy(val_out, val_y).item(),
-        "val_acc": compute_metrics(val_out, val_y),
+        "val_acc": compute_metrics(val_out, val_y, metric=metric),
         "test_loss": F.cross_entropy(test_out, test_y).item(),
-        "test_acc": compute_metrics(test_out, test_y),
+        "test_acc": compute_metrics(test_out, test_y, metric=metric),
     }
 
 
@@ -219,7 +224,9 @@ def main():
         train_loss, train_acc = train_one_epoch(
             model, data, train_idx, optimizer, device, freeze_global=True
         )
-        metrics = evaluate(model, data, device, freeze_global=True)
+        metrics = evaluate(
+            model, data, device, freeze_global=True, metric=configuration["metric"]
+        )
 
         if metrics["val_acc"] > best_warm_up_val_acc:
             best_warm_up_val_acc = metrics["val_acc"]
@@ -237,7 +244,9 @@ def main():
             f"Train loss: {train_loss:.4f}, Train acc: {train_acc:.4f}",
         )
 
-    metrics = evaluate(model, data, device, freeze_global=True)
+    metrics = evaluate(
+        model, data, device, freeze_global=True, metric=configuration["metric"]
+    )
     print(
         f"Finish warm-up with {epoch:03d} epochs | ",
         f"Train loss: {train_loss:.4f}, Train acc: {train_acc:.4f} | ",
@@ -257,7 +266,7 @@ def main():
         train_loss, train_acc = train_one_epoch(
             model, data, train_idx, optimizer, device, freeze_global=False
         )
-        metrics = evaluate(model, data, device)
+        metrics = evaluate(model, data, device, metric=configuration["metric"])
 
         if metrics["val_acc"] > best_val_acc:
             best_val_acc = metrics["val_acc"]

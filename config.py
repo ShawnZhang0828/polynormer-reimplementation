@@ -14,4 +14,5 @@ def get_default_config():
         "use_relu": False,
         "use_local_attention_network": True,
         "checkpoint_path": "checkpoints/model.pth",
+        "metric": "accuracy",
     }
