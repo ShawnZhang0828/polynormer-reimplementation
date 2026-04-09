@@ -103,6 +103,10 @@ def merge_args_with_config(args, config):
         if value is not None:
             config[key] = value
 
+    config["checkpoint_path"] = (
+        f"checkpoints/checkpoint_{config["dataset"].lower()}_{"relu" if config["use_relu"] else "plain"}"
+    )
+
     return config
 
 
