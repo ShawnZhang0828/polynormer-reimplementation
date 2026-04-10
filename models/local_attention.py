@@ -28,6 +28,7 @@ class LocalAttention(nn.Module):
         self.add_self_loops = add_self_loops
         self.bias = bias
 
+        # Use GATConv for homophilic/heterophilic datasetsa and GCNConv for large-scale datasets
         if use_attention_network:
             if dim % n_heads != 0:
                 raise ValueError(

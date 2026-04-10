@@ -97,6 +97,7 @@ def parse_arguments():
 
 
 def merge_args_with_config(args, config):
+    # Merge command line arguments with default configuration
     args = vars(args)
 
     for key, value in args.items():

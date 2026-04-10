@@ -54,10 +54,6 @@ class Polynormer(nn.Module):
             [nn.LayerNorm(hidden_dim) for _ in range(n_local_layers)]
         )
 
-        self.local_linears = nn.ModuleList(
-            [nn.Linear(hidden_dim, hidden_dim) for _ in range(n_local_layers)]
-        )
-
         self.global_layers = nn.ModuleList(
             [
                 GlobalAttention(dim=hidden_dim, dropout=dropout, n_heads=n_global_heads)
@@ -101,9 +97,6 @@ class Polynormer(nn.Module):
         for layer in self.global_norms:
             layer.reset_parameters()
 
-        for layer in self.local_linears:
-            layer.reset_parameters()
-
         self.prediction_head.reset_parameters()
         self.prediction_head_local.reset_parameters()
 
@@ -122,13 +115,9 @@ class Polynormer(nn.Module):
         # Local modules
         local_x = torch.zeros_like(x)
         for i, local_layer in enumerate(self.local_layers):
+            layer_out = local_layer(x, edge_index)
             h = self.local_h[i](x)
-
-            if self.use_relu:
-                h = F.relu(h)
-
             beta = torch.sigmoid(self.local_betas[i]).unsqueeze(0)
-            layer_out = local_layer(x, edge_index) + self.local_linears[i](x)
 
             x = (1 - beta) * self.local_norms[i](h * layer_out) + beta * layer_out
 
@@ -143,11 +132,11 @@ class Polynormer(nn.Module):
         if not freeze_global:
             # Global modules
             for i, global_layer in enumerate(self.global_layers):
+                layer_out = global_layer(x)
                 h = self.global_h[i](x)
                 beta = torch.sigmoid(self.global_betas[i]).unsqueeze(0)
-                layer_out = global_layer(x)
 
-                x = self.global_norms[i](layer_out) * (h + beta)
+                x = (1 - beta) * self.global_norms[i](h * layer_out) + beta * layer_out
 
                 if self.use_relu:
                     x = F.relu(x)
